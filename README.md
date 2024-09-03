@@ -19,7 +19,7 @@ chmod +x netmonitor
 Run the application:
 
 ```
-./netmontir
+./netmontor
 ```
 
 ## Requirements
