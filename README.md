@@ -10,16 +10,17 @@ Download the application and necessary files with the following command:
 git clone https://github.com/mCaballero1224/netmonitor.git
 ```
 
-Make the application executable:
+Enter the project directory and make the application executable:
 
 ```
-chmod +x netmonitor
+cd netmonitor
+sudo chmod +x netmonitor
 ```
 
 Run the application:
 
 ```
-./netmontor
+sudo ./netmontor
 ```
 
 ## Requirements
