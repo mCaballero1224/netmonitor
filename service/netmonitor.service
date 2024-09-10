@@ -1,0 +1,14 @@
+[Unit]
+Description=Netmonitor service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/netmonitor
+Restart=always
+StandardOutput=journal
+StandardError=journal
+Environment="XDG_CONFIG_HOME=/home/mcaballero/.config"
+
+[Install]
+WantedBy=default.target

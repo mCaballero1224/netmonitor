@@ -1,0 +1,160 @@
+#!/usr/bin/python3
+
+import os
+import socket
+import configparser
+import argparse
+import importlib.util
+from typing import List
+from colorama import Fore, Style
+from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit import PromptSession
+
+# Initialize argparser
+parser = argparse.ArgumentParser(
+    prog="nmcli",
+    description="CLI client for Netmonitor",
+    epilog="See source code at http://github.com/mCaballero1224/netmonitor"
+)
+
+"""
+Add Arguments:
+    -l , --local: Client will connect to local instance of Netmonitor
+    -p, --port: Specify the port for remote connection.
+    -h, --hostname: Specify the hostname for remote connection.
+"""
+parser.add_argument('-l', '--local', action="store_true",
+                    help="connect to local Netmonitor service")
+parser.add_argument('-p', '--port', type=int,
+                    help="Specify port for remote host")
+parser.add_argument('--hostname', type=str,
+                    help="Specify hostname of remote host")
+
+args = parser.parse_args()
+
+# Get config directory
+XDG_CONFIG = os.getenv("XDG_CONFIG_HOME")
+CONFIG_DIR: str = os.path.join(XDG_CONFIG, 'netmonitor')
+
+# Get path for modules directory
+MODULES_DIR = os.path.join(CONFIG_DIR, 'modules')
+
+# Get path for config file
+CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.ini')
+
+
+config = configparser.ConfigParser()
+config.read(CONFIG_FILE)
+
+# Get Unix sockect path
+UNIX_SOCKET_PATH: str = config.get('DEFAULT', 'unix_socket_path')
+REMOTE_PORT: int = config.getint('DEFAULT', 'remote_port')
+
+
+def import_module(module_name, path):
+    """
+    Function that imports a module given a name and file path.
+    """
+
+    # Create the full path to the module file
+    full_path = os.path.join(MODULES_DIR, path)
+
+    # Load the module
+    spec = importlib.util.spec_from_file_location(module_name, full_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module
+
+
+# import custom modules
+commands = import_module('commands', 'commands.py')
+# Function that validates commands for user prompt
+validate = commands.validate_command
+# List of available commands
+prompt_commands: List = commands.prompt_commands
+
+
+def remote_client(hostname: str, port: int):
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        client_socket.connect((hostname, port))
+    except ConnectionRefusedError:
+        print(f"[nmcli] {Fore.RED}{Style.BRIGHT}Could not connect to the service at {
+              hostname}:{port}.{Style.RESET_ALL}")
+        return
+
+    print(f"[nmcli] Connected to Netmonitor service at {hostname}:{port}.")
+    start_prompt(client_socket)
+
+
+def local_client():
+    client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+
+    try:
+        client_socket.connect(UNIX_SOCKET_PATH)
+    except FileNotFoundError:
+        print(f"[nmcli] {Fore.RED}{
+              Style.BRIGHT}Service is not running.{Style.RESET_ALL}")
+        return
+
+    print("[nmcli] Connected to local Netmonitor service.")
+    start_prompt(client_socket)
+
+
+def start_prompt(client_socket):
+    # Command completer for auto-completion within the user prompt
+    command_completer: WordCompleter = WordCompleter(
+        prompt_commands, ignore_case=True)
+
+    # Create a prompt session
+    session: PromptSession = PromptSession(completer=command_completer)
+
+    # Variable to control the main loop
+    is_running: bool = True
+
+    try:
+        """
+        Set `raw` option to True to enable ANSI color output on the terminal.
+        I spent two days figuring out this option was the cause of color
+        output not working. I nearly painted my desk with my own grey matter.
+        """
+        with patch_stdout(raw=True):
+            while is_running:
+                # Using prompt-toolkit for input with auto-completion
+                user_input: str = session.prompt("[nmcli] ")
+
+                if user_input == "exit":
+                    print("[nmcli] Exiting...")
+                    break
+
+                client_socket.sendall(user_input.encode("utf-8"))
+                response = client_socket.recv(1024).decode("utf-8")
+                print("[Netmonitor] " + response)
+
+    finally:
+        client_socket.close()
+
+
+# Main loop for client connection
+def main():
+    if args.local and args.hostname:
+        print(f"{Fore.RED}{Style.BRIGHT}" +
+              "Cannot run a local and remote client at the same time!")
+        return
+
+    if args.hostname and args.port:
+        remote_client(args.hostname, args.port)
+    elif args.port and not args.hostname:
+        print(f"{Fore.RED}{Style.BRIGHT}" +
+              f"You must specify both a host and a port.{Style.RESET_ALL}")
+        return
+    elif args.hostname:
+        remote_client(args.hostname, REMOTE_PORT)
+    else:
+        local_client()
+
+
+if __name__ == "__main__":
+    main()
