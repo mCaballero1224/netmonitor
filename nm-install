@@ -91,7 +91,7 @@ def main():
     os.system(f"chmod +x {SCRIPT_LOCATION}")
 
     print("Adding systemd serivce.")
-    shutil.copy('./etc/netmonitor.service', SYSTEMD_LOCATION)
+    shutil.copy('./service/netmonitor.service', SYSTEMD_LOCATION)
     print("Installation complete!")
 
 
