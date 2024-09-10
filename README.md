@@ -2,26 +2,82 @@
 
 A python application that monitors services based on user configuration.
 
-## Installation and Use
+## Installation
 
-Download the application and necessary files with the following command:
+## Download the Git repo
+Download the application and necessary files, then enter the directory with the following commands:
 
 ```
 git clone https://github.com/mCaballero1224/netmonitor.git
+cd ./netmonitor
 ```
 
-Enter the project directory and make the application executable:
+## Initial Configuration
+
+You'll need to change a few things before running the install script. First, you'll edit the `Environment` attribute in the file `netmonitor/service/netmonitor.service` to match your environment's `XDG_CONFIG_HOME`. If you don't know it, you can find it with this command:
 
 ```
-cd netmonitor
-sudo chmod +x netmonitor
+echo $XDG_CONFIG_HOME
 ```
 
-Run the application:
+## Running the Install Script
+
+The install script `nm-install` relies on the user's environment variables while also requiring elevated privileges. Use the `--preserve-env` or `-E` option with sudo to ensure smooth installation.
 
 ```
-sudo ./netmontor
+chmod +x ./nm-install
+sudo -E python ./nm-install
 ```
+
+The script does the following:
+
+- Creates the configuration directory in your `XDG_CONFIG_HOME` and places `config.ini` and the `modules` directory within it.
+- Creates the log directory in `/var/log/netmonitor` along with two log files `netmonitor.log` and `error.log` within the directory.
+- Places the `netmonitor` script in `/usr/bin`
+- Places the `nmcli` client script in `/usr/bin`
+- Places the `netmonitor.service` file within `/etc/systemd/user/netmonitor.service` so that it can be ran as a user service by systemd.
+
+The script also changes file/user permissions for executables (`nmcli`/`netmonitor`) and the config directory (`.config/netmonitor`), but you'll need to change the permissions for the log directory:
+
+```
+chown -R your_username /var/log/netmonitor/
+```
+
+
+### Running the Service
+
+Reload systemd:
+```
+systemctl --user daemon-reload
+```
+
+Run the service with systemd as a user service:
+```
+# sets the serivce to run on boot
+systemctl --user enable netmonitor.service
+# starts the service
+systemctl --user start netmonitor.service
+```
+
+### Accessing Netmonitor
+
+Use the `nmcli` client to access the service. You can access it via a Unix socket:
+
+```
+# You can also specify to use the Unix socket with the --local flag
+nmcli
+```
+
+Or you can access it via a TCP socket connection:
+```
+# The default port is 2077
+# Specify a port with the --port or -p option
+# Specify the hostname with the --hostname option
+# You can change this default in the config.ini file
+nmcli --hostname 127.0.0.1 --port 20777
+```
+
+
 
 ## Requirements
 
