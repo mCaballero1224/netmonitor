@@ -43,6 +43,14 @@ The script also changes file/user permissions for executables (`nmcli`/`netmonit
 chown -R your_username /var/log/netmonitor/
 ```
 
+### Setting Bash Environment Variables
+
+Add the following line to your `~/.bashrc`
+
+```
+alias nmcli="sudo --preserve-env nmcli"
+```
+
 
 ### Running the Service
 
@@ -74,7 +82,7 @@ Or you can access it via a TCP socket connection:
 # Specify a port with the --port or -p option
 # Specify the hostname with the --hostname option
 # You can change this default in the config.ini file
-nmcli --hostname 127.0.0.1 --port 20777
+nmcli --hostname 127.0.0.1 --port 2077
 ```
 
 
