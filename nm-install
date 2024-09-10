@@ -1,0 +1,99 @@
+#!/usr/bin/python3
+
+import os
+import shutil
+import sys
+import getpass
+import configparser
+from colorama import Fore, Style
+
+config = configparser.ConfigParser()
+
+
+def main():
+    # Get home directory
+    HOME = os.getenv("HOME")
+    # Default config directory and file
+    CONFIG_DIR = os.path.join(HOME, '.config', 'netmonitor')
+    CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.ini')
+    SCRIPT_LOCATION = '/usr/bin/netmonitor'
+    CLIENT_LOCATION = '/usr/bin/nmcli'
+    LOG_DIR = '/var/log/netmonitor'
+    LOG_FILE = os.path.join(LOG_DIR, 'netmonitor.log')
+    ERROR_LOG = os.path.join(LOG_DIR, 'error.log')
+    SYSTEMD_LOCATION = '/etc/systemd/user/netmonitor.service'
+
+    # Warn the user and ask if they'd like to continue
+    print(f"{Fore.RED}{Style.BRIGHT}Warning:{Style.RESET_ALL}" +
+          "This will replace any existing configuration for Netmonitor.")
+    user_input: str = input('Continue? (y/n): ')
+
+    # Evaulate user input
+    if user_input.lower() == 'n':
+        return
+    print("Installing Netmonitor...")
+
+    # Create the config directory
+    print("Creating config directory")
+    if os.path.exists(CONFIG_DIR):
+        # Remove any existing configuration directory
+        print("Removing any existing configuration directories.")
+        shutil.rmtree(CONFIG_DIR)
+    # Create configuration directory
+    os.mkdir(CONFIG_DIR)  # Create config directory
+
+    # Copy default config file
+    print("Creating default config file.")
+    shutil.copy('./config.ini', CONFIG_FILE)
+
+    # Copy modules directory to config directory
+    print("Adding python modules.")
+    MODULES_DIR = os.path.join(CONFIG_DIR, 'modules')
+    shutil.copytree('./modules', MODULES_DIR)
+
+    print(f"Changing ownership of {CONFIG_DIR} to user.")
+    os.system(f"chown -R $USER {CONFIG_DIR}")
+
+    print("Creating log directory.")
+    if not os.path.exists(LOG_DIR):
+        os.mkdir(LOG_DIR)
+        os.system(f"chown -R $USER:$USER {LOG_DIR}")
+        print("Creating log files.")
+        log_file = open(LOG_FILE, "w")
+        error_log = open(ERROR_LOG, "w")
+        os.system(f"chown -R $USER:$USER {LOG_DIR}")
+        log_file.close()
+        error_log.close()
+    else:
+        print("Existing log directory found.")
+
+    # Install script to /usr/bin
+    if os.path.exists(SCRIPT_LOCATION):  # check for exiting script
+        print("Removing existing script.")
+        os.remove(SCRIPT_LOCATION)
+    print(f"Installing 'netmonitor' script to '{SCRIPT_LOCATION}'.")
+    shutil.copy('./netmonitor', SCRIPT_LOCATION)
+
+    # Install client script to /usr/bin
+    if os.path.exists(CLIENT_LOCATION):  # check for exiting script
+        print("Removing existing client script.")
+        os.remove(CLIENT_LOCATION)
+
+    print(f"Installing 'nmcli' script to '{CLIENT_LOCATION}'.")
+    shutil.copy('./client/nmcli', CLIENT_LOCATION)
+
+    print(f"Changing ownership of {SCRIPT_LOCATION} to user.")
+    os.system(f"chown -R $USER {SCRIPT_LOCATION}")
+    print(f"Changing ownership of {CLIENT_LOCATION} to user.")
+
+    print("Changing script file permissions to be executable.")
+    os.system(f"chmod +x {CLIENT_LOCATION}")
+    os.system(f"chmod +x {SCRIPT_LOCATION}")
+
+    print("Adding systemd serivce.")
+    shutil.copy('./etc/netmonitor.service', SYSTEMD_LOCATION)
+    print("Installation complete!")
+
+
+if __name__ == "__main__":
+    main()
