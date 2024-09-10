@@ -95,7 +95,7 @@ def remote_socket_server():
     while True:
         connection, addr = server_socket.accept()
         ip, port = addr
-        handle_client(connection, f"{ip}:{port}")
+        handle_client(connection, f"{ip}")
 
 
 # Main function
